@@ -45,22 +45,23 @@ const {
       declare global {
         interface Window {
           toggleTheme: () => void;
-          toggleLang: () => void;
+          setLanguage: (lang: string) => void;
           updatePageContent: () => void;
         }
       }
 
-      const languages = ['en', 'de', 'es'];
       const langLabels: Record<string, string> = { en: 'EN', de: 'DE', es: 'ES' };
 
       function updatePageContent() {
         const lang = document.documentElement.getAttribute('data-lang') || 'en';
 
-        const langBtn = document.getElementById('lang-btn');
-        if (langBtn) {
-          langBtn.textContent = langLabels[lang] || 'EN';
+        // Update language button label
+        const langLabel = document.getElementById('lang-label');
+        if (langLabel) {
+          langLabel.textContent = langLabels[lang] || 'EN';
         }
 
+        // Update all translatable elements
         document.querySelectorAll('[data-en]').forEach(el => {
           const en = el.getAttribute('data-en');
           const de = el.getAttribute('data-de');
@@ -74,6 +75,7 @@ const {
           }
         });
 
+        // Update placeholders
         document.querySelectorAll('[data-en-placeholder]').forEach(el => {
           const en = el.getAttribute('data-en-placeholder');
           const de = el.getAttribute('data-de-placeholder');
@@ -86,6 +88,16 @@ const {
             (el as HTMLInputElement | HTMLTextAreaElement).placeholder = en;
           }
         });
+
+        // Highlight active language in dropdown
+        document.querySelectorAll('.lang-option').forEach(btn => {
+          const btnLang = btn.getAttribute('data-lang');
+          if (btnLang === lang) {
+            btn.classList.add('bg-gray-100', 'dark:bg-gray-800', 'font-semibold');
+          } else {
+            btn.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'font-semibold');
+          }
+        });
       }
 
       function toggleTheme() {
@@ -93,44 +105,19 @@ const {
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
       }
 
-      function toggleLang() {
-        // Create overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'lang-change-overlay';
+      function setLanguage(newLang: string) {
+        document.documentElement.setAttribute('data-lang', newLang);
+        localStorage.setItem('lang', newLang);
+        updatePageContent();
 
-        const modal = document.createElement('div');
-        modal.className = 'lang-change-modal';
-
-        const currentLang = document.documentElement.getAttribute('data-lang') || 'en';
-        const texts: Record<string, string> = {
-          en: 'Changing language...',
-          de: 'Sprache wird geändert...',
-          es: 'Cambiando idioma...'
-        };
-
-        modal.innerHTML = `<h2>${texts[currentLang] || texts.en}</h2>`;
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-
-        // Change language after delay
-        setTimeout(() => {
-          const currentIndex = languages.indexOf(currentLang);
-          const newLang = languages[(currentIndex + 1) % languages.length];
-          document.documentElement.setAttribute('data-lang', newLang);
-          localStorage.setItem('lang', newLang);
-          updatePageContent();
-
-          // Hide overlay
-          overlay.classList.add('fade-out');
-          setTimeout(() => {
-            overlay.remove();
-          }, 300);
-        }, 800);
+        // Close dropdown
+        const dropdown = document.getElementById('lang-dropdown');
+        dropdown?.classList.add('hidden');
       }
 
       // Expose to window
       window.toggleTheme = toggleTheme;
-      window.toggleLang = toggleLang;
+      window.setLanguage = setLanguage;
       window.updatePageContent = updatePageContent;
 
       // Initialize
@@ -141,9 +128,31 @@ const {
         const themeBtn = document.getElementById('theme-btn');
         themeBtn?.addEventListener('click', toggleTheme);
 
-        // Language toggle button
+        // Language dropdown toggle
         const langBtn = document.getElementById('lang-btn');
-        langBtn?.addEventListener('click', toggleLang);
+        const langDropdown = document.getElementById('lang-dropdown');
+
+        langBtn?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          langDropdown?.classList.toggle('hidden');
+        });
+
+        // Language option buttons
+        document.querySelectorAll('.lang-option').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const lang = btn.getAttribute('data-lang');
+            if (lang) {
+              setLanguage(lang);
+            }
+          });
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+          if (langDropdown && !langDropdown.contains(e.target as Node) && !langBtn?.contains(e.target as Node)) {
+            langDropdown.classList.add('hidden');
+          }
+        });
 
         // Fade-in observer
         const observerOptions = {
